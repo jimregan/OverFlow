@@ -101,5 +101,62 @@ class OverFlow(nn.Module):
 
         return mel_output.transpose(1, 2), states_travelled, input_parameters, output_parameters
 
+
+    @torch.inference_mode()
+    def sample2(self, indata, text_lengths=None, sampling_temp=1.0):
+        r"""
+        Sampling mel spectrogram based on text inputs
+        Args:
+            indata: list of tuples of form (text,weight) where text is a phoneme sequence (see sample())
+            text_lengths (int tensor, Optional):  single value scalar with length of input (x)
+
+        Returns:
+            mel_outputs (list): list of len of the output of mel spectrogram
+                    each containing n_mel_channels channels
+                shape: (len, n_mel_channels)
+            states_travelled (list): list of phoneme travelled at each time step t
+                shape: (len)
+        """
+        t0 = indata[0][0]
+        text_inputs = torch.zeros_like(t0)
+        if text_inputs.ndim > 1:
+            text_inputs = text_inputs.squeeze(0)
+            
+        if text_lengths is None:
+            text_lengths = text_inputs.new_tensor(text_inputs.shape[0])
+        text_lengths = text_lengths.unsqueeze(0)
+
+        embedded_inputs = torch.empty((0))
+        
+        for text,weight in indata:
+            if text.ndim > 1:
+                text = text.squeeze(0)
+
+            text = text.unsqueeze(0)
+            emb = self.embedding(text).transpose(1, 2)
+            if not embedded_inputs.shape[0]:
+                embedded_inputs = torch.zeros_like(emb)
+            embedded_inputs = torch.add(embedded_inputs,emb,alpha=weight)
+            
+        encoder_outputs, text_lengths = self.encoder(embedded_inputs, text_lengths)
+
+        (
+            mel_latent,
+            states_travelled,
+            input_parameters,
+            output_parameters,
+        ) = self.hmm.sample(encoder_outputs, sampling_temp=sampling_temp)
+
+        mel_output, mel_lengths, _ = self.decoder(
+            mel_latent.unsqueeze(0).transpose(1, 2), text_lengths.new_tensor([mel_latent.shape[0]]), reverse=True
+        )
+
+        if self.normaliser:
+            mel_output = self.normaliser.inverse_normalise(mel_output)
+
+        return mel_output.transpose(1, 2), states_travelled, input_parameters, output_parameters
+
+
+
     def store_inverse(self):
         self.decoder.store_inverse()
