@@ -26,7 +26,7 @@ def text_to_sequence(text, cleaner_names):
       List of integers corresponding to the symbols in the text
     """
     sequence = []
-
+    print('text = ', text)
     # Check for curly braces and treat their contents as ARPAbet:
     while len(text):
         # re.match searches only for the beginning of the string, so it keeps on returning in groups
@@ -40,6 +40,7 @@ def text_to_sequence(text, cleaner_names):
         sequence += _arpabet_to_sequence(m.group(2))
         text = m.group(3)
 
+    print('seq = ', sequence)
     return sequence
 
 
