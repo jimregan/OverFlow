@@ -68,7 +68,7 @@ def create_hparams(generate_parameters=False):
         ################################
         # Data Parameters             #
         ################################
-        batch_size=28,
+        batch_size=40,
         load_mel_from_disk=False,
         training_files="data/trimmed-mtm-fem/filelists/swe-fem-shorter-train.txt",
         validation_files="data/trimmed-mtm-fem/filelists/swe-fem-shorter-train.txt",

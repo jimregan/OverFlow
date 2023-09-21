@@ -4,7 +4,7 @@ import matplotlib.pylab as plt
 import nltk
 nltk.download('punkt')
 
-import IPython.display as ipd 
+#import IPython.display as ipd 
 import os
 import json
 import sys
@@ -86,8 +86,20 @@ model.model.hmm.hparams.prenet_dropout_while_eval=True
 texts = [
     "The Secret Service believed that it was very doubtful that any President would ride regularly in a vehicle with a fixed top, even though transparent."
 ]
-sequences = []
+filelist = 'data/trimmed-mtm-fem/filelists/swe-fem-val.txt'
+data = open(filelist).readlines()
 
+texts = []
+sequences = []
+for item in data[0:10]:
+    text = item.split('|')[1]
+    texts.append(text)
+    sequence = np.array(text_to_sequence(text, ['basic_cleaners']))[None, :]
+    sequence = torch.from_numpy(sequence).to(device).long()
+    sequences.append(sequence)
+
+
+'''
 for i, text in enumerate(texts):
     print(f"\n{''.join(['*'] * 20)}\n{i + 1} - Input text: \n{''.join(['*'] * 20)}\n{text}")
     text = phonetise_text(hparams.cmu_phonetiser, text, word_tokenize)
@@ -97,7 +109,7 @@ for i, text in enumerate(texts):
     sequences.append(sequence)
     
     print(''.join(['='] * 100))
-
+'''
 
 t = 0.667
 from tqdm.auto import tqdm
@@ -124,7 +136,7 @@ with torch.no_grad():
         audios.append(audio)
         print(f"{''.join(['*'] * 10)} \t{i + 1}\t {''.join(['*'] * 10)}")
         print(f"Text: {texts[i]}")
-        ipd.display(ipd.Audio(audio[0].data.cpu().numpy(), rate=hparams.sampling_rate))
+        #ipd.display(ipd.Audio(audio[0].data.cpu().numpy(), rate=hparams.sampling_rate))
         print(f"{''.join(['*'] * 35)}\n")
 
 
