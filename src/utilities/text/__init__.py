@@ -12,6 +12,28 @@ _id_to_symbol = {i: s for i, s in enumerate(symbols)}
 _curly_re = re.compile(r"(.*?)\{(.+?)\}(.*)")
 
 
+'''
+    Converts a string of space-separated binary feature vectors into a tensor
+
+    example input "0001 1001 & 0010 1111 ."
+    example output
+
+'''
+def feat_to_sequence(feattext):
+    tokens = feattext.split()
+    tokens.append('.')
+    seq = []
+    for token,nexttoken in zip(tokens[:-1],tokens[1:]):
+        sentfinal = int(nexttoken=='.')
+        wordfinal = int(nexttoken=='&' or sentfinal)
+        #print(token,nexttoken)
+        if len(token)>1:
+            #print(token,sentfinal,wordfinal)
+            ntoken = [int(x) for x in list(token)] + [int(wordfinal), int(sentfinal)]
+            seq.append(ntoken)
+    return seq
+ 
+
 def text_to_sequence(text, cleaner_names):
     """Converts a string of text to a sequence of IDs corresponding to the symbols in the text.
 

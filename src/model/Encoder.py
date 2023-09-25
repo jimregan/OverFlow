@@ -54,7 +54,7 @@ class Encoder(nn.Module):
                 shape (batch, text_len * phone_per_state, encoder_embedding_dim)
             input_lengths (torch.float): shape (batch)
         """
-
+        #print('!!!!!!!!!!!!!!!encoder->forward()',x.shape)
         batch_size = x.shape[0]
         t_len = x.shape[2]
 
@@ -71,7 +71,7 @@ class Encoder(nn.Module):
         outputs, _ = self.lstm(x)  # We do not use the hidden or cell states
 
         outputs, _ = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
-
+        #import pdb;pdb.set_trace()
         outputs = outputs.reshape(batch_size, t_len * self.state_per_phone, self.encoder_embedding_dim)
         input_lengths = input_lengths * self.state_per_phone
 

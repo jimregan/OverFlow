@@ -15,7 +15,7 @@ class LightningLoader(pl.LightningDataModule):
         super().__init__()
 
         self.hparams.update(vars(hparams))
-        self.collate_fn = TextMelCollate(self.hparams.n_frames_per_step)
+        self.collate_fn = TextMelCollate(self.hparams.n_frames_per_step,self.hparams)
         self.num_workers = hparams.num_workers
 
     def prepare_data(self):

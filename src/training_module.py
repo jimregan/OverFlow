@@ -35,6 +35,7 @@ class TrainingModule(pl.LightningModule):
         Returns:
             output (Any): output of the forward function
         """
+        #import pdb;pdb.set_trace()
         log_probs = self.model(x)
         return log_probs
 
@@ -107,7 +108,9 @@ class TrainingModule(pl.LightningModule):
             optimizer ([type]): [description]
         """
 
+        #print('!!!!!!!!!!!!!!!!on_before_zero_grad()')
         if self.trainer.is_global_zero and (self.global_step % self.hparams.save_model_checkpoint == 0):
+
             (
                 text_inputs,
                 text_lengths,
@@ -115,12 +118,13 @@ class TrainingModule(pl.LightningModule):
                 max_len,
                 mel_lengths,
             ) = self.get_an_element_of_validation_dataset()
+            #import pdb;pdb.set_trace()
             (
                 mel_output,
                 state_travelled,
                 input_parameters,
                 output_parameters,
-            ) = self.model.sample(text_inputs[0], text_lengths[0])
+            ) = self.model.sample(text_inputs[0].transpose(0,1), text_lengths[0])
             mel_output_normalised = self.model.normaliser(mel_output)
 
             with torch.no_grad():
@@ -147,6 +151,9 @@ class TrainingModule(pl.LightningModule):
             )
 
     def get_an_element_of_validation_dataset(self):
+
+        #print('!!!!!!!!!!!!!!!!get_an_element_of_validation_dataset()')
+
         r"""
         Gets an element of the validation dataset.
 
@@ -158,6 +165,9 @@ class TrainingModule(pl.LightningModule):
             mel_lengths (torch.LongTensor): The lengths of the mel spectrogram.
         """
         x, y = self.model.parse_batch(next(iter(self.val_dataloader())))
+
+        #import pdb;pdb.set_trace()
+
         (text_inputs, text_lengths, mels, max_len, mel_lengths) = x
         text_inputs = text_inputs[0].unsqueeze(0).to(self.device)
         text_lengths = text_lengths[0].unsqueeze(0).to(self.device)

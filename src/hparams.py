@@ -49,7 +49,7 @@ def create_hparams(generate_parameters=False):
         ################################
         # Experiment Parameters        #
         ################################
-        run_name="OverFlow",
+        run_name="OverFlow-feat2",
         gpus=[0],
         max_epochs=50000,
         val_check_interval=100,
@@ -68,13 +68,13 @@ def create_hparams(generate_parameters=False):
         ################################
         # Data Parameters             #
         ################################
-        batch_size=40,
+        batch_size=15,
         load_mel_from_disk=False,
-        training_files="data/trimmed-mtm-fem/filelists/swe-fem-shorter-train.txt",
-        validation_files="data/trimmed-mtm-fem/filelists/swe-fem-shorter-train.txt",
-        text_cleaners=["basic_cleaners"],
+        training_files="data/swe-fem-features/filelists/swe-fem-features_train.txt",
+        validation_files="data/swe-fem-features/filelists/swe-fem-features_val.txt",
+        text_cleaners=[],
         phonetise=False,
-        cmu_phonetiser=CMUDict("src/phonetised_files/cmudict-0.7b.txt"),
+        cmu_phonetiser='',
         num_workers=20,
         ################################
         # Audio Parameters             #
@@ -101,6 +101,7 @@ def create_hparams(generate_parameters=False):
         # Model Parameters             #
         ################################
         n_symbols=len(symbols),
+        n_features = 36,
         symbols_embedding_dim=512,
         ################################
         # Encoder parameters           #

@@ -15,7 +15,7 @@ import torch
 
 from src.hparams import create_hparams
 from src.training_module import TrainingModule
-from src.utilities.text import text_to_sequence, phonetise_text
+from src.utilities.text import text_to_sequence, phonetise_text, feat_to_sequence
 from hifigan.env import AttrDict
 from hifigan.models import Generator
 from nltk import word_tokenize
@@ -23,6 +23,7 @@ from hifigandenoiser import Denoiser
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = 'cpu'
 checkpoint_path = sys.argv[1] #"checkpoint_100000.ckpt"
 
 def plot_spectrogram_to_numpy(spectrogram):
@@ -43,11 +44,12 @@ def plot_hidden_states(hidden_states):
     plt.title("Hidden states vs Time")
     plt.show()
 
-
 hparams = create_hparams()
 
 model = TrainingModule.load_from_checkpoint(checkpoint_path)
-_ = model.to(device).eval().half()
+#_ = model.to(device).eval().half()
+_ = model.to(device).eval()
+
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
@@ -74,7 +76,7 @@ torch.manual_seed(h.seed)
 generator = Generator(h).to(device)
 state_dict_g = load_checkpoint(hifi_checkpoint_file, device)
 generator.load_state_dict(state_dict_g['generator'])
-generator.eval().half()
+#generator.eval().half()
 generator.remove_weight_norm()
 
 model.model.hmm.hparams.max_sampling_time = 1800
@@ -87,17 +89,80 @@ texts = [
     "The Secret Service believed that it was very doubtful that any President would ride regularly in a vehicle with a fixed top, even though transparent."
 ]
 filelist = 'data/trimmed-mtm-fem/filelists/swe-fem-val.txt'
+filelist = 'data/swe-fem-features/filelists/swe-fem-features_val.txt'
 data = open(filelist).readlines()
 
 texts = []
 sequences = []
 for item in data[0:10]:
+
+    '''
     text = item.split('|')[1]
     texts.append(text)
     sequence = np.array(text_to_sequence(text, ['basic_cleaners']))[None, :]
     sequence = torch.from_numpy(sequence).to(device).long()
     sequences.append(sequence)
+    '''
+    text = item.split('|')[1]
+    seq = feat_to_sequence(text)
+    #    seq = torch.FloatTensor(seq).half().to(device)
+    #seq = [s[:-2] + [0,0] for s in seq]
+    #print(seq)
+    mask = torch.ones(36).to(device)
+    offset = torch.zeros(36).to(device)
+    #mask[34]=0
+    #mask[35]=0
 
+    #mask[30]=1.5
+    #offset[30]=0.5
+ 
+    #mask[30]=0.5
+    #offset[30]= -1
+
+    #offset[6] = 0.5 ;#extra nasality
+    seq = torch.FloatTensor(seq).to(device)
+
+    # cold: non nasals
+    # mask[6] = 0
+
+    # replace dentals with bilabials
+    #seq[(seq[:,13]==1).nonzero(),11]=1
+    #mask[13]=0
+
+    # make dentals retroflex
+    # seq[(seq[:,13]==1).nonzero(),16]=1
+
+    # make bilabials fricative
+    # seq[(seq[:,11]==1).nonzero(),3]=0
+    # seq[(seq[:,11]==1).nonzero(),4]=1
+
+    # make vowels nasal
+    # seq[(seq[:,0]==0).nonzero(),6]=1
+
+    # make approximants palatal 
+    # seq[(seq[:,9]==1).nonzero(),17]=1
+    # seq[(seq[:,9]==1).nonzero(),13]=0
+
+    # reduce bilabials
+    #mask[11] = 0.0
+    #mask[12] = 0.0
+
+
+    # finska: make stops unvoiced    
+    #seq[(seq[:,3]==1).nonzero(),1]=0
+    #mask[33] = 0
+    #mask[27] =3
+    #mask[28] =0
+    #mask[29] =0
+
+    mask[27] =0.0
+    mask[28] =0.0
+
+
+    seq = seq * mask + offset
+    #import pdb;pdb.set_trace()
+    print(seq.shape)
+    sequences.append(seq)
 
 '''
 for i, text in enumerate(texts):
@@ -122,7 +187,7 @@ with torch.no_grad():
 
 
 for i, mel_output in enumerate(mel_outputs):
-    print(i, texts[i])
+    #print(i, texts[i])
     plot_spectrogram_to_numpy(np.array(mel_output.float().cpu()).T)
 
 denoiser = Denoiser(generator, mode='zeros')
@@ -134,10 +199,10 @@ with torch.no_grad():
         audio = generator(mel_output)
         audio = denoiser(audio[:, 0], strength=0.004)[:, 0]
         audios.append(audio)
-        print(f"{''.join(['*'] * 10)} \t{i + 1}\t {''.join(['*'] * 10)}")
-        print(f"Text: {texts[i]}")
+        #print(f"{''.join(['*'] * 10)} \t{i + 1}\t {''.join(['*'] * 10)}")
+        #print(f"Text: {texts[i]}")
         #ipd.display(ipd.Audio(audio[0].data.cpu().numpy(), rate=hparams.sampling_rate))
-        print(f"{''.join(['*'] * 35)}\n")
+        #print(f"{''.join(['*'] * 35)}\n")
 
 
 import soundfile as sf
