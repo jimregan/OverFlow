@@ -1,0 +1,10 @@
+torch
+librosa
+numpy
+scipy
+matplotlib
+seaborn
+pytorch_lightning
+nltk
+inflect
+unidecode
