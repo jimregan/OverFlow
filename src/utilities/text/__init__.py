@@ -14,23 +14,39 @@ _curly_re = re.compile(r"(.*?)\{(.+?)\}(.*)")
 
 '''
     Converts a string of space-separated binary feature vectors into a tensor
-
+    v1
     example input "0001 1001 & 0010 1111 ."
-    example output
-
+    v2
+    example input "0,0,0,0.5 0,0,1,0.75 ..."
 '''
-def feat_to_sequence(feattext):
+def feat_to_sequence(feattext, featureset = 'v2'):
     tokens = feattext.split()
     tokens.append('.')
     seq = []
-    for token,nexttoken in zip(tokens[:-1],tokens[1:]):
-        sentfinal = int(nexttoken=='.')
-        wordfinal = int(nexttoken=='&' or sentfinal)
-        #print(token,nexttoken)
-        if len(token)>1:
-            #print(token,sentfinal,wordfinal)
-            ntoken = [int(x) for x in list(token)] + [int(wordfinal), int(sentfinal)]
-            seq.append(ntoken)
+
+    if featureset == 'v1':
+        # 36 binary parameters (34 + wordfinal, sentfinal)
+
+        for token,nexttoken in zip(tokens[:-1],tokens[1:]):
+            sentfinal = int(nexttoken=='.')
+            wordfinal = int(nexttoken=='&' or sentfinal)
+            #print(token,nexttoken)
+            if len(token)>1:
+                #print(token,sentfinal,wordfinal)
+                ntoken = [int(x) for x in list(token)] + [int(wordfinal), int(sentfinal)]
+                seq.append(ntoken)
+
+    elif featureset == 'v2':
+        # 33 binary & continous params (31 + wfinal, sfinal), comma separated string
+        for token,nexttoken in zip(tokens[:-1],tokens[1:]):
+            sentfinal = int(nexttoken=='.')
+            wordfinal = int(nexttoken=='&' or sentfinal)
+            #print(token,nexttoken)
+            if len(token)>1:
+                #print(token,sentfinal,wordfinal)
+                ntoken = [0.0 if x=='' else float(x) for x in token.split(',')] + [float(wordfinal), float(sentfinal)]
+                seq.append(ntoken)
+
     return seq
  
 

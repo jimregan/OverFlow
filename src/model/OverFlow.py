@@ -39,7 +39,7 @@ class OverFlow(nn.Module):
 
         """
         text_padded, input_lengths, mel_padded, gate_padded, output_lengths = batch
-        text_padded = text_padded.long()
+        #text_padded = text_padded.long()
         input_lengths = input_lengths.long()
         max_len = torch.max(input_lengths.data).item()
         mel_padded = mel_padded.float()
@@ -74,10 +74,12 @@ class OverFlow(nn.Module):
     #     mel_lengths  1d: BATCH
     
     def forward(self, inputs):
+        #import pdb;pdb.set_trace()
         feat_inputs, feat_lengths, mels, max_len, mel_lengths = inputs
         feat_lengths, mel_lengths = feat_lengths.data, mel_lengths.data
+
         feat_inputs = feat_inputs.float()
-        #import pdb;pdb.set_trace()
+
         embedded_inputs = self.feat_embedding(feat_inputs.transpose(1,2)).transpose(1, 2)
         #print('forward()... embedded_inputs:',embedded_inputs.shape,feat_lengths)
         encoder_outputs, feat_lengths = self.encoder(embedded_inputs, feat_lengths)

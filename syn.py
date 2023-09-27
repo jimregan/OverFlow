@@ -1,16 +1,9 @@
-import matplotlib.pylab as plt
 
-# Download tokenizer if not present
-import nltk
-nltk.download('punkt')
-
-#import IPython.display as ipd 
 import os
 import json
 import sys
 sys.path.append('src/model')
 sys.path.insert(0, './hifigan')
-import numpy as np
 import torch
 
 from src.hparams import create_hparams
@@ -22,38 +15,8 @@ from nltk import word_tokenize
 from hifigandenoiser import Denoiser
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = 'cpu'
-checkpoint_path = sys.argv[1] #"checkpoint_100000.ckpt"
-
-def plot_spectrogram_to_numpy(spectrogram):
-    fig, ax = plt.subplots(figsize=(12, 3))
-    im = ax.imshow(spectrogram, aspect="auto", origin="lower",
-                   interpolation='none')
-    plt.colorbar(im, ax=ax)
-    plt.xlabel("Frames")
-    plt.ylabel("Channels")
-    plt.title("Synthesised Mel-Spectrogram")
-    fig.canvas.draw()
-    plt.show()
-    
-def plot_hidden_states(hidden_states):
-    plt.plot(hidden_states)
-    plt.xlabel("Time steps")
-    plt.ylabel("HMM states")
-    plt.title("Hidden states vs Time")
-    plt.show()
-
-hparams = create_hparams()
-
-model = TrainingModule.load_from_checkpoint(checkpoint_path)
-#_ = model.to(device).eval().half()
-_ = model.to(device).eval()
-
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-print(f'The model has {count_parameters(model):,} trainable parameters')
 
 def load_checkpoint(filepath, device):
     print(filepath)
@@ -63,71 +26,84 @@ def load_checkpoint(filepath, device):
     print("Complete.")
     return checkpoint_dict
 
-# load the hifi-gan model
-hifigan_loc = 'hifigan/'
-config_file = hifigan_loc + 'config_v1.json'
-hifi_checkpoint_file = 'hifigan/generator_v1'
+def load_hifigan(filepath='hifigan/',config='config_v1.json',generator='generator_v1',device='cuda'):
+    # load the hifi-gan model
+    hifigan_loc = filepath
+    config_file = hifigan_loc + config
+    hifi_checkpoint_file = hifigan_loc + generator
+    with open(config_file) as f:
+        data = f.read()
+    json_config = json.loads(data)
+    h = AttrDict(json_config)
+    torch.manual_seed(h.seed)
+    generator = Generator(h).to(device)
+    state_dict_g = load_checkpoint(hifi_checkpoint_file, device)
+    generator.load_state_dict(state_dict_g['generator'])
+    generator.remove_weight_norm()
+    denoiser = Denoiser(generator, mode='zeros')
+    return generator,denoiser
 
-with open(config_file) as f:
-    data = f.read()
-json_config = json.loads(data)
-h = AttrDict(json_config)
-torch.manual_seed(h.seed)
-generator = Generator(h).to(device)
-state_dict_g = load_checkpoint(hifi_checkpoint_file, device)
-generator.load_state_dict(state_dict_g['generator'])
-#generator.eval().half()
-generator.remove_weight_norm()
+checkpoint_path = sys.argv[1]
+filelist = sys.argv[2]
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+hparams = create_hparams()
+
+# load OverFlow
+model = TrainingModule.load_from_checkpoint(checkpoint_path)
+_ = model.to(device).eval()
+print(f'The model has {count_parameters(model):,} trainable parameters')
 model.model.hmm.hparams.max_sampling_time = 1800
 model.model.hmm.hparams.duration_quantile_threshold=0.55
 model.model.hmm.hparams.deterministic_transition=True
 model.model.hmm.hparams.predict_means=False
 model.model.hmm.hparams.prenet_dropout_while_eval=True
 
-texts = [
-    "The Secret Service believed that it was very doubtful that any President would ride regularly in a vehicle with a fixed top, even though transparent."
-]
-filelist = 'data/trimmed-mtm-fem/filelists/swe-fem-val.txt'
-filelist = 'data/swe-fem-features/filelists/swe-fem-features_val.txt'
+# load HiFiGan
+generator,denoiser = load_hifigan()
+
+
 data = open(filelist).readlines()
 
-texts = []
 sequences = []
 for item in data[0:10]:
+    if '|' in item:
+        featstring = item.split('|')[1].strip()
+    else:
+        featstring = item.strip()
 
-    '''
-    text = item.split('|')[1]
-    texts.append(text)
-    sequence = np.array(text_to_sequence(text, ['basic_cleaners']))[None, :]
-    sequence = torch.from_numpy(sequence).to(device).long()
-    sequences.append(sequence)
-    '''
-    text = item.split('|')[1]
-    seq = feat_to_sequence(text)
-    #    seq = torch.FloatTensor(seq).half().to(device)
-    #seq = [s[:-2] + [0,0] for s in seq]
-    #print(seq)
-    mask = torch.ones(36).to(device)
-    offset = torch.zeros(36).to(device)
-    #mask[34]=0
-    #mask[35]=0
+    seq = torch.FloatTensor(feat_to_sequence(featstring)).to(device)
+   
+    weight = torch.ones(hparams.n_features).to(device)
+    bias = torch.zeros(hparams.n_features).to(device)
 
-    #mask[30]=1.5
-    #offset[30]=0.5
- 
-    #mask[30]=0.5
-    #offset[30]= -1
+    # x low vowels 
+    # weight[22] = 0.3
+    # x high vowels 
+    # weight[22] = 0.7
+    # bias[22] = 0.3
 
-    #offset[6] = 0.5 ;#extra nasality
-    seq = torch.FloatTensor(seq).to(device)
+    # x back vowels
+    # weight[23] = 0.3
+    # x front vowels
+    # weight[23] = 0.5
+    # bias[23] = 0.5
+
+    # extra nasal
+    # weight[6] = 0.3
+    # bias[6] = 0.7
+
+    # no fricatives + approx
+    # weight[4] = 0
+    # weight[9] = 0.3
+    # bias[9] = 0.7
 
     # cold: non nasals
-    # mask[6] = 0
+    # weight[6] = 0
 
     # replace dentals with bilabials
-    #seq[(seq[:,13]==1).nonzero(),11]=1
-    #mask[13]=0
+    # seq[(seq[:,13]==1).nonzero(),11]=1
+    # weight[13]=0
 
     # make dentals retroflex
     # seq[(seq[:,13]==1).nonzero(),16]=1
@@ -136,45 +112,23 @@ for item in data[0:10]:
     # seq[(seq[:,11]==1).nonzero(),3]=0
     # seq[(seq[:,11]==1).nonzero(),4]=1
 
-    # make vowels nasal
-    # seq[(seq[:,0]==0).nonzero(),6]=1
-
     # make approximants palatal 
     # seq[(seq[:,9]==1).nonzero(),17]=1
     # seq[(seq[:,9]==1).nonzero(),13]=0
 
     # reduce bilabials
-    #mask[11] = 0.0
-    #mask[12] = 0.0
+    # weight[11] = 0.0
+    # weight[12] = 0.0
 
+    # 'finska': make stops unvoiced    
+    # seq[(seq[:,3]==1).nonzero(),1]=0
+    # weight[24] =3
+    # weight[25] =0
+    # weight[26] =0
 
-    # finska: make stops unvoiced    
-    #seq[(seq[:,3]==1).nonzero(),1]=0
-    #mask[33] = 0
-    #mask[27] =3
-    #mask[28] =0
-    #mask[29] =0
+    seq = seq * weight + bias
 
-    mask[27] =0.0
-    mask[28] =0.0
-
-
-    seq = seq * mask + offset
-    #import pdb;pdb.set_trace()
-    print(seq.shape)
     sequences.append(seq)
-
-'''
-for i, text in enumerate(texts):
-    print(f"\n{''.join(['*'] * 20)}\n{i + 1} - Input text: \n{''.join(['*'] * 20)}\n{text}")
-    text = phonetise_text(hparams.cmu_phonetiser, text, word_tokenize)
-    print(f"\n{''.join(['*'] * 20)}\n{i + 1} - Phonetised text: \n{''.join(['*'] * 20)}\n{text}")
-    sequence = np.array(text_to_sequence(text, ['english_cleaners']))[None, :]
-    sequence = torch.from_numpy(sequence).to(device).long()
-    sequences.append(sequence)
-    
-    print(''.join(['='] * 100))
-'''
 
 t = 0.667
 from tqdm.auto import tqdm
@@ -186,12 +140,6 @@ with torch.no_grad():
         hidden_state_travelled_all.append(hidden_state_travelled)
 
 
-for i, mel_output in enumerate(mel_outputs):
-    #print(i, texts[i])
-    plot_spectrogram_to_numpy(np.array(mel_output.float().cpu()).T)
-
-denoiser = Denoiser(generator, mode='zeros')
-
 with torch.no_grad():
     audios = []
     for i, mel_output in enumerate(mel_outputs):
@@ -199,11 +147,6 @@ with torch.no_grad():
         audio = generator(mel_output)
         audio = denoiser(audio[:, 0], strength=0.004)[:, 0]
         audios.append(audio)
-        #print(f"{''.join(['*'] * 10)} \t{i + 1}\t {''.join(['*'] * 10)}")
-        #print(f"Text: {texts[i]}")
-        #ipd.display(ipd.Audio(audio[0].data.cpu().numpy(), rate=hparams.sampling_rate))
-        #print(f"{''.join(['*'] * 35)}\n")
-
 
 import soundfile as sf
 from pathlib import Path
