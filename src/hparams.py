@@ -49,7 +49,7 @@ def create_hparams(generate_parameters=False):
         ################################
         # Experiment Parameters        #
         ################################
-        run_name="OverFlow-feat3",
+        run_name="OverFlow-feat6",
         gpus=[0],
         max_epochs=50000,
         val_check_interval=100,
@@ -66,13 +66,14 @@ def create_hparams(generate_parameters=False):
         warm_start=False,
         ignore_layers=["model.embedding.weight"],
         ################################
-        # Data Parameters             #
+        # Data Parameters              #
         ################################
         batch_size=15,
         load_mel_from_disk=False,
-        training_files="data/swe-fem-features/filelists/swe-fem-features_train_2.txt",
-        validation_files="data/swe-fem-features/filelists/swe-fem-features_val_2.txt",
+        training_files="data/swe-fem-features/filelists/comb-fem-features_train_6.txt",
+        validation_files="data/swe-fem-features/filelists/comb-fem-features_val_6.txt",
         featureset = 'v2',
+        n_features = 15+2,
         text_cleaners=[],
         phonetise=False,
         cmu_phonetiser='',
@@ -102,7 +103,6 @@ def create_hparams(generate_parameters=False):
         # Model Parameters             #
         ################################
         n_symbols=len(symbols),
-        n_features = 33,
         symbols_embedding_dim=512,
         ################################
         # Encoder parameters           #

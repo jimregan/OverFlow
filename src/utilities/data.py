@@ -42,7 +42,7 @@ class TextMelCollate:
     def __init__(self, n_frames_per_step, hparams):
 
         self.n_frames_per_step = n_frames_per_step
-        self.n_features = hparams['n_features']
+        self.n_features = hparams.n_features
 
     # feature version
     def __call__(self, batch):

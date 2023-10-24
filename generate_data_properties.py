@@ -146,7 +146,7 @@ def main(args):
     hparams.batch_size = args.batch_size
 
     trainset = TextMelLoader(hparams.training_files, hparams)
-    collate_fn = TextMelCollate(hparams.n_frames_per_step)
+    collate_fn = TextMelCollate(hparams.n_frames_per_step, hparams)
 
     train_loader = DataLoader(
         trainset,

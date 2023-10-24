@@ -62,7 +62,6 @@ model.model.hmm.hparams.prenet_dropout_while_eval=True
 # load HiFiGan
 generator,denoiser = load_hifigan()
 
-
 data = open(filelist).readlines()
 
 sequences = []
@@ -77,11 +76,33 @@ for item in data[0:10]:
     weight = torch.ones(hparams.n_features).to(device)
     bias = torch.zeros(hparams.n_features).to(device)
 
+    #weight[6] = 0.5
+    #bias[6] = -0.5
+  
+    weight[4] = 0.3
+    bias[4] = 0.7
+    #bias[6] = 0.5
+    #weight[5] = 0.75
+    #bias[5] = 0.25
+    #bias[7] = 0.5
+
+    # weight[3] = 0.8
+    # weight[3] = 0.8
+    # 'stockholmska'
+    # weight[22] = 0.3
+    # weight[27] = 0.7
+    # bias[27] = 0.3
+
+    # weight[24] = 1
+    # weight[25] = 1
+    # weight[26] = 1
+    # weight[28] = 0
+
     # x low vowels 
     # weight[22] = 0.3
     # x high vowels 
-    # weight[22] = 0.7
-    # bias[22] = 0.3
+    #weight[22] = 0.7
+    #bias[22] = 0.3
 
     # x back vowels
     # weight[23] = 0.3
